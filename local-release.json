@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "recipes": {
+    "windows-x64": {
+      "engine": "powershell",
+      "script": "packaging/windows/local-release.ps1",
+      "arguments": [],
+      "environment": {},
+      "assets": [
+        "dist/release/wordcraft-{version}-windows-x64.msi",
+        "dist/release/wordcraft-{version}-windows-x64-portable.zip"
+      ],
+      "releaseName": "WordCraft v{version}"
+    }
+  }
+}
