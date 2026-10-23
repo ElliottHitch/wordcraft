@@ -1,0 +1,31 @@
+name: Personal Windows release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source-sha:
+        description: Reviewed 40-character SHA, must equal the selected branch's current commit
+        type: string
+        required: true
+      version:
+        description: Reviewed Cargo.toml version, numeric X.Y.Z and newer than existing tags
+        type: string
+        required: true
+      review-note:
+        description: Source review reference and accepted findings for this exact commit
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  draft:
+    permissions:
+      contents: write
+    uses: ElliottHitch/craft-launcher/.github/workflows/personal-windows.yml@350fbff4fe84cc9f46a0cf7d95af7d7bdf55f9a7
+    with:
+      app-id: wordcraft
+      source-sha: ${{ inputs.source-sha }}
+      version: ${{ inputs.version }}
+      review-note: ${{ inputs.review-note }}
