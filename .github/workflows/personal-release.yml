@@ -23,7 +23,7 @@ jobs:
   draft:
     permissions:
       contents: write
-    uses: ElliottHitch/craft-launcher/.github/workflows/personal-windows.yml@350fbff4fe84cc9f46a0cf7d95af7d7bdf55f9a7
+    uses: ElliottHitch/craft-launcher/.github/workflows/personal-windows.yml@bd340bef9cea4264b9289613ceb40bca7c03f009
     with:
       app-id: wordcraft
       source-sha: ${{ inputs.source-sha }}
