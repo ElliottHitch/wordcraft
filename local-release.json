@@ -5,7 +5,7 @@
       "engine": "powershell",
       "script": "packaging/windows/local-release.ps1",
       "arguments": [],
-      "environment": {},
+      "environment": {"RUSTUP_TOOLCHAIN": "1.95.0"},
       "assets": [
         "dist/release/wordcraft-{version}-windows-x64.msi",
         "dist/release/wordcraft-{version}-windows-x64-portable.zip"
