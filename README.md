@@ -2,6 +2,7 @@
 
 - Windows release packages built locally and published to this fork
 - Installer update link points to this fork's releases
+- Fixed list indentation levels and added a Join Following List command
 
 <p align="center">
   <a href="https://getartcraft.com/">
