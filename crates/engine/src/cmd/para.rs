@@ -148,11 +148,14 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("para.multilevel", "Multilevel List", "Home › Paragraph", |s, v| list(s, v, ListKind::Legal)).params(r#"{"kind"?: "legal|outline"}"#),
         CommandSpec::new("para.listLevel", "Change List Level", "Home › Paragraph › Bullets", |s, v| {
             let lvl = p::u64(v, "level").unwrap_or(0).min(8) as u8;
-            fmt(s, &|p| {
-                if let Some(n) = p.numbering.as_mut() {
-                    n.level = lvl;
+            let story = s.sel.focus.story;
+            for path in super::selected_paths(s) {
+                let list = s.doc.para(story, &path).and_then(|p| super::lists::effective_list(&s.doc, &p.props));
+                if let Some(n) = list {
+                    super::lists::change_level(s.doc.para_mut(story, &path)?, n, lvl);
                 }
-            })
+            }
+            sel_result(s)
         })
         .params(r#"{"level": 0-8}"#),
         CommandSpec::new("para.restartNumbering", "Restart at 1", "Home › Paragraph › Numbering", restart_numbering),
@@ -394,11 +397,14 @@ pub fn indent(s: &mut Session, _: &Value) -> CmdResult {
     for path in paths {
         let (num, left) = {
             let Some(p) = s.doc.para(a.story, &path) else { continue };
-            (p.props.numbering.filter(|n| n.num != 0), s.doc.styles.resolve_para(&p.props).indent_left)
+            (super::lists::effective_list(&s.doc, &p.props), s.doc.styles.resolve_para(&p.props).indent_left)
         };
         let para = s.doc.para_mut(a.story, &path)?;
         match num {
-            Some(n) => para.props.numbering = Some(NumRef { num: n.num, level: (n.level + 1).min(8) }),
+            Some(n) => {
+                super::lists::change_level(para, n, n.level.saturating_add(1));
+                continue;
+            }
             None => {
                 para.props.indent_left = Some(((left / tab).floor() + 1.0) * tab);
                 para.props.cancel_char_indents(true, false, false);
@@ -416,11 +422,14 @@ pub fn outdent(s: &mut Session, _: &Value) -> CmdResult {
     for path in paths {
         let (num, left) = {
             let Some(p) = s.doc.para(a.story, &path) else { continue };
-            (p.props.numbering.filter(|n| n.num != 0), s.doc.styles.resolve_para(&p.props).indent_left)
+            (super::lists::effective_list(&s.doc, &p.props), s.doc.styles.resolve_para(&p.props).indent_left)
         };
         let para = s.doc.para_mut(a.story, &path)?;
         match num {
-            Some(n) => para.props.numbering = Some(NumRef { num: n.num, level: n.level.saturating_sub(1) }),
+            Some(n) => {
+                super::lists::change_level(para, n, n.level.saturating_sub(1));
+                continue;
+            }
             None => {
                 para.props.indent_left = Some((((left / tab).ceil() - 1.0) * tab).max(0.0));
                 para.props.cancel_char_indents(true, false, false);

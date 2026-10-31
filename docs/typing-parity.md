@@ -26,6 +26,8 @@ formatting use the existing editing primitives. Tests: `sample_text_formulas_exp
 
 ## Lists
 
+A paragraph directly before a numbered list can join it with **Join Following List** in the Numbering menu or context menu. The paragraph takes the following item’s list and level, and later items continue numbering. A matching typed label and its separating spaces or tabs are removed; other text is kept.
+
 Bullets and Numbering decide whether to toggle off from the selected paragraphs' effective numbering, including numbering inherited from a paragraph style or its `basedOn` chain. An explicit `numId=0` override remains unlisted until a list is applied. The effective list level and any level override determine the list kind, including an explicitly requested gallery kind. Toggling preserves custom styles, including a ListParagraph style that supplies numbering, list definitions and paragraphs outside the selection. A directly applied list still clears the automatic ListParagraph style. Original command and DOCX round-trip tests cover this narrow case related to #3459; it is not a new Word UI measurement. Tests: `toggle_style_inherited_list_off_preserves_other_paragraphs_and_round_trips`, `explicit_list_off_override_is_not_toggled_off_again`, `list_toggle_uses_effective_level_and_override`, `list_paragraph_style_survives_inherited_toggle_off`, `direct_list_toggle_still_clears_the_automatic_list_paragraph_style`.
 
 | Keys | Word's result | Test |
@@ -34,7 +36,7 @@ Bullets and Numbering decide whether to toggle off from the selected paragraphs'
 | … Enter ×3, ×4 | each further Enter adds a blank Normal paragraph (never swallowed) | `more_enters_after_a_list_make_blank_paragraphs` |
 | Enter on an empty **nested** item | moves it up one level; only a top-level empty item leaves the list. The same when the list comes from the paragraph style (List Number 2 in a Word file, #2143) | `enter_on_an_empty_nested_item_moves_it_up_a_level_first`, `enter_on_an_empty_item_numbered_by_its_style_moves_it_up_a_level` |
 | `* ` Enter (nothing typed) | list cancelled, Normal paragraph | `enter_right_after_starting_a_list_cancels_it` |
-| Tab / Shift+Tab at the start of an item | demote / promote | `shift_tab_and_tab_change_list_levels` |
+| Tab / Shift+Tab at the start of an item | demote / promote, using the destination level’s indentation while keeping the same list | `shift_tab_and_tab_change_list_levels` |
 | Backspace at the start of an item | 1st: number removed, indent kept; 2nd: Normal paragraph — **not** joined to the one above | `backspace_at_the_start_of_an_item_removes_the_number_then_the_indent` |
 | Enter mid-item / at item start | splits the item / inserts an empty item above | `enter_in_the_middle_or_at_the_start_of_an_item` |
 | Shift+Enter in an item | line break inside the same item | `shift_enter_stays_inside_the_list_item` |

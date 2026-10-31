@@ -376,11 +376,7 @@ fn split_para_as(s: &mut Session, at: &Pos, enter: bool) -> Result<Pos, CmdError
     // `num: 0` means "explicitly not in a list", so it isn't a list item. The list may come from
     // the paragraph's style (List Number 2 in a Word file) rather than the paragraph itself.
     let (at_end, style, empty_list) = match s.doc.para_at(at) {
-        Some(p) => (
-            at.off >= p.len(),
-            p.props.style.clone(),
-            p.props.numbering.or_else(|| s.doc.styles.resolve_para(&p.props).numbering).filter(|n| enter && n.num != 0 && p.is_empty()),
-        ),
+        Some(p) => (at.off >= p.len(), p.props.style.clone(), lists::effective_list(&s.doc, &p.props).filter(|_| enter && p.is_empty())),
         None => return Err(CmdError::Failed("no paragraph at caret".into())),
     };
     if let Some(n) = empty_list {
@@ -388,8 +384,7 @@ fn split_para_as(s: &mut Session, at: &Pos, enter: bool) -> Result<Pos, CmdError
         // the list (Word behaviour).
         let para = s.doc.para_mut(at.story, &at.path)?;
         if n.level > 0 {
-            para.props.numbering = Some(wordcraft_doc::props::NumRef { num: n.num, level: n.level - 1 });
-            para.touch();
+            lists::change_level(para, n, n.level - 1);
         } else {
             leave_list(para);
         }

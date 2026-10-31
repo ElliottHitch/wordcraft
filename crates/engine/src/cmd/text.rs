@@ -639,12 +639,10 @@ fn tab(s: &mut Session, _: &Value) -> CmdResult {
     let f = s.sel.focus.clone();
     if s.sel.is_collapsed()
         && f.off == 0
-        && let Some(n) = s.doc.para_at(&f).and_then(|x| x.props.numbering)
-        && n.num != 0
+        && let Some(n) = s.doc.para_at(&f).and_then(|x| super::lists::effective_list(&s.doc, &x.props))
     {
         let para = s.doc.para_mut(f.story, &f.path)?;
-        para.props.numbering = Some(NumRef { num: n.num, level: (n.level + 1).min(8) });
-        para.touch();
+        super::lists::change_level(para, n, n.level.saturating_add(1));
         return sel_result(s);
     }
     if !s.sel.is_collapsed() && s.sel.anchor.path != s.sel.focus.path {
@@ -669,11 +667,13 @@ fn back_tab(s: &mut Session, _: &Value) -> CmdResult {
         s.sel = Selection::caret(Pos { story, path: wordcraft_doc::Path(path), off: 0 });
         return sel_result(s);
     }
+    if !s.sel.is_collapsed() && s.sel.anchor.path != s.sel.focus.path {
+        return super::para::outdent(s, &Value::Null);
+    }
     let f = s.sel.focus.clone();
-    if let Some(n) = s.doc.para_at(&f).and_then(|x| x.props.numbering).filter(|n| n.num != 0) {
+    if let Some(n) = s.doc.para_at(&f).and_then(|x| super::lists::effective_list(&s.doc, &x.props)) {
         let para = s.doc.para_mut(f.story, &f.path)?;
-        para.props.numbering = Some(NumRef { num: n.num, level: n.level.saturating_sub(1) });
-        para.touch();
+        super::lists::change_level(para, n, n.level.saturating_sub(1));
         return sel_result(s);
     }
     super::para::outdent(s, &Value::Null)

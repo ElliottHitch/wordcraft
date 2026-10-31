@@ -5,8 +5,8 @@
 
 use serde_json::{Value, json};
 use wordcraft_doc::StoryRef;
-use wordcraft_doc::numbering::{Level, LevelSuffix, ListKind, levels_for};
-use wordcraft_doc::props::{Align, NumRef, Rgb, TextColor};
+use wordcraft_doc::numbering::{Counters, Level, LevelSuffix, ListKind, levels_for};
+use wordcraft_doc::props::{Align, NumRef, ParaProps, Rgb, TextColor};
 use wordcraft_doc::section::NumFormat;
 
 use super::sel_result;
@@ -17,6 +17,8 @@ pub const LEVELS: usize = 9;
 
 pub fn specs() -> Vec<CommandSpec> {
     vec![
+        CommandSpec::new("para.joinFollowingList", "Join Following List", "Home › Paragraph › Numbering", join_following_list)
+            .when(|s| if following_list(s).is_some() { None } else { Some("the next paragraph is not a numbered list item") }),
         CommandSpec::new("list.define", "Define New Multilevel List", "Home › Paragraph › Multilevel List", define).params(
             r#"{"levels": [{"format"?: "decimal|lowerLetter|upperLetter|lowerRoman|upperRoman|decimalZero|ordinal|bullet|none", "text"?: "%1.%2." (%n = level n's number; the bullet character for bullet), "start"?: n, "restartAfter"?: 0-8 (0 = never; omit = the level above), "style"?: paragraph style linked to the level | null, "align"?: "left|center|right", "alignedAt"?: pt, "indentAt"?: pt, "follow"?: "tab|space|nothing", "tabAt"?: pt | null, "font"?: string | null, "bold"?: bool, "italic"?: bool, "color"?: "RRGGBB" | null, "legal"?: bool}, …] (index = level, up to 9; fields left out keep the base list's), "num"?: list id to change in place (default: a new list), "apply"?: bool (default true: number the selected paragraphs), "name"?: string}"#,
         ),
@@ -139,10 +141,102 @@ pub fn level_from(mut l: Level, i: usize, v: &Value) -> Level {
     l
 }
 
+pub(super) fn effective_list(doc: &wordcraft_doc::Document, props: &ParaProps) -> Option<NumRef> {
+    props.numbering.or_else(|| doc.styles.resolve_para(props).numbering).filter(|n| n.num != 0)
+}
+
+pub(super) fn change_level(para: &mut wordcraft_doc::Paragraph, list: NumRef, level: u8) {
+    let level = level.min(8);
+    if level == list.level {
+        return;
+    }
+    para.props.numbering = Some(NumRef { num: list.num, level });
+    para.props.indent_left = None;
+    para.props.indent_first = None;
+    para.props.indent_left_chars = None;
+    para.props.indent_first_chars = None;
+    para.touch();
+}
+
+struct FollowingList {
+    list: NumRef,
+    prefix_len: usize,
+}
+
+fn following_list(s: &Session) -> Option<FollowingList> {
+    let pos = &s.sel.focus;
+    if s.sel.anchor.story != pos.story || s.sel.anchor.path != pos.path || s.cell_range().is_some() {
+        return None;
+    }
+    let para = s.doc.para_at(pos)?;
+    if effective_list(&s.doc, &para.props).is_some() {
+        return None;
+    }
+    let next = pos.path.last().checked_add(1)?;
+    if next > u32::MAX as usize {
+        return None;
+    }
+    let following = s.doc.para(pos.story, &pos.path.with_last(next))?;
+    let list = effective_list(&s.doc, &following.props)?;
+    let level = s.doc.numbering.level(list.num, list.level)?;
+    if matches!(level.format, NumFormat::Bullet | NumFormat::None) {
+        return None;
+    }
+    let mut counters = Counters::default();
+    for path in s.doc.para_paths(pos.story) {
+        if path == pos.path {
+            break;
+        }
+        if let Some(n) = s.doc.para(pos.story, &path).and_then(|p| effective_list(&s.doc, &p.props)) {
+            counters.next_label(&s.doc.numbering, n.num, n.level);
+        }
+    }
+    let (label, _) = counters.next_label(&s.doc.numbering, list.num, list.level)?;
+    let leading = para.text.bytes().take_while(|b| matches!(*b, b' ' | b'\t')).count();
+    let rest = para.text.get(leading..)?;
+    let prefix_len = rest.strip_prefix(&label).filter(|_| !label.is_empty()).map_or(0, |after| {
+        let separator = after.bytes().take_while(|b| matches!(*b, b' ' | b'\t')).count();
+        if separator == 0 { 0 } else { leading + label.len() + separator }
+    });
+    Some(FollowingList { list, prefix_len })
+}
+
+fn join_following_list(s: &mut Session, _: &Value) -> CmdResult {
+    let target = following_list(s).ok_or_else(|| CmdError::Failed("the next paragraph is not a numbered list item".into()))?;
+    let original = s.sel.clone();
+    let pos = original.focus.clone();
+    let old_len = s.doc.para_at(&pos).map(|p| p.len()).unwrap_or(0);
+    if target.prefix_len > 0 {
+        s.sel = crate::Selection {
+            anchor: wordcraft_doc::Pos { off: 0, ..pos.clone() },
+            focus: wordcraft_doc::Pos { off: target.prefix_len, ..pos.clone() },
+        };
+        super::delete_selection(s)?;
+    }
+    let removed = old_len.saturating_sub(s.doc.para_at(&pos).map(|p| p.len()).unwrap_or(0));
+    let before_format = (removed > 0 && s.doc.settings.track_changes && s.prefs.markup.track_formatting).then(|| s.doc.clone());
+    let para = s.doc.para_mut(pos.story, &pos.path)?;
+    para.props.numbering = Some(target.list);
+    para.props.indent_left = None;
+    para.props.indent_first = None;
+    para.props.indent_left_chars = None;
+    para.props.indent_first_chars = None;
+    para.touch();
+    let adjust = |mut p: wordcraft_doc::Pos| {
+        p.off = if p.off < target.prefix_len { target.prefix_len.saturating_sub(removed) } else { p.off.saturating_sub(removed) }.min(para.len());
+        p
+    };
+    s.sel = crate::Selection { anchor: adjust(original.anchor), focus: adjust(original.focus) };
+    if let Some(before) = before_format {
+        super::fmt_revisions::record(s, "para.joinFollowingList", &before);
+    }
+    sel_result(s)
+}
+
 /// The caret's list, if it is in one.
 pub fn caret_list(s: &Session) -> Option<u32> {
     let para = s.doc.para_at(&s.sel.focus)?;
-    para.props.numbering.or_else(|| s.doc.styles.resolve_para(&para.props).numbering).filter(|n| n.num != 0).map(|n| n.num)
+    effective_list(&s.doc, &para.props).map(|n| n.num)
 }
 
 /// The nine levels list `num` shows (its own level definitions over its abstract list's).

@@ -1196,6 +1196,7 @@ fn home(app: &mut WordApp, ui: &mut Ui) {
                         mi(ui, app, l, "para.numbering", json!({"kind": k}));
                     }
                     ui.separator();
+                    mi(ui, app, "Join Following List", "para.joinFollowingList", json!({}));
                     mi(ui, app, "Restart at 1", "para.restartNumbering", json!({}));
                     mi(ui, app, "None", "para.numbering", json!({"off": true}));
                 });
