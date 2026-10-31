@@ -1,3 +1,8 @@
+## Changes in this fork
+
+- Windows release packages built locally and published to this fork
+- Installer update link points to this fork's releases
+
 <p align="center">
   <a href="https://getartcraft.com/">
     <picture>
