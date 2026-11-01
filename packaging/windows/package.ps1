@@ -157,7 +157,7 @@ Invoke-Native "wix build" {
     -o $Msi
 }
 # Check the compiled scope, path and registration contract before signing.
-$shell = (Get-Process -Id $PID).Path
+$shell = Join-Path $PSHOME $(if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh.exe' } else { 'powershell.exe' })
 & $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'check-install-policy.ps1') -MsiPath $Msi
 if ($LASTEXITCODE -ne 0) { throw "Compiled installer policy failed for $Msi." }
 # wix writes its debug symbols (.wixpdb) next to the MSI; keep them out of the release assets.
