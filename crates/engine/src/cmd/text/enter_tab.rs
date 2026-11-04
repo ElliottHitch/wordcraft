@@ -228,9 +228,6 @@ pub(super) fn tab_indent_on(s: &Session) -> bool {
     ac.enabled && ac.tab_indent && !(crate::cmd::protect::enforced(&s.doc) && s.doc.settings.protect_formatting)
 }
 
-/// Does Tab at `f` indent instead of typing a tab? Only at the start of a line of a paragraph
-/// with text. Not before the first line of a list item numbered by its style, where Tab types a
-/// tab character as with the option off.
 fn tab_indents(s: &mut Session, f: &Pos) -> bool {
     let Some(para) = s.doc.para_at(f).filter(|p| !p.is_empty()) else { return false };
     if f.off == 0 {

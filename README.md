@@ -235,9 +235,12 @@ closer pagination fidelity, a stability sweep and native printing. Details and e
 [ROADMAP.md](ROADMAP.md) and [where we fall short](docs/gaps.md).
 
 ## Downloads
-To build Windows packages for this fork, run the ArtCraft Launcher release workflow with a pinned source revision.
 
-**Download WordCraft** from GitHub: the [latest release](https://github.com/storytold/wordcraft/releases/latest) has every build listed below, and [all releases](https://github.com/storytold/wordcraft/releases) has earlier versions and their notes. `<ver>` in the file names is the version number, and `SHA256SUMS.txt` lists a checksum for every file.
+**Download WordCraft** from this fork's [latest release](https://github.com/ElliottHitch/wordcraft/releases/latest) or browse [all releases](https://github.com/ElliottHitch/wordcraft/releases). The current personal recipe publishes Windows x64 MSI and portable ZIP assets.
+
+Build personal packages through the [private local-releases hub](https://github.com/ElliottHitch/local-releases/actions/workflows/release.yml), using a full source commit SHA and the `windows-x64` recipe in [`local-release.json`](local-release.json).
+
+The platform matrix below documents upstream source packaging options. Personal releases use the Windows x64 recipe above. `<ver>` in the file names is the version number, and `SHA256SUMS.txt` lists the release asset checksums.
 
 ### Windows
 
